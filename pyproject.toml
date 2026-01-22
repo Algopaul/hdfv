@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-hdfx = "hdfx.cli:main"
+hdfv = "hdfv.cli:main"
 
 [build-system]
 requires = ["setuptools"]
