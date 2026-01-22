@@ -12,9 +12,14 @@ err_console = Console(stderr=True)
 
 
 @app.command()
-def histvid(file: Path, field: str, outfile, *, fps: int = 60):
+def histvid(file: Path,
+            field: str,
+            outfile,
+            *,
+            fps: int = 30,
+            colorscheme: str = 'viridis'):
   with h5py.File(file, 'r') as f:
-    histogram_video(f[field], outfile, fps=fps)
+    histogram_video(f[field], outfile, fps=fps, colorscheme=colorscheme)
 
 
 @app.command()
