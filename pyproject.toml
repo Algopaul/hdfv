@@ -12,7 +12,8 @@ dependencies = [
   "rich",
   "tqdm",
   "matplotlib",
-  "imageio"
+  "imageio",
+  "hdfx @ git+ssh://git@github.com/Algopaul/hdfx.git"
 ]
 
 [project.scripts]
