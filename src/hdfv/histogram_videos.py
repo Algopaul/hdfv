@@ -13,7 +13,7 @@ def histogram_video(data,
   cmap = colormaps[colorscheme]
   for t in data:
     n_bins = 256
-    traj = np.histogram2d(t[:, 1], t[:, 6], n_bins, [[-1, 1], [-1, 1]])[0]
+    traj = np.histogram2d(t[:, 1], t[:, 0], n_bins, [[-5, 5], [-5, 5]])[0]
     img = traj.reshape((n_bins, n_bins))
     img = np.clip(img / 4, 0, 1)
     rgb = (255 * cmap(img)[..., :3]).astype(np.uint8)

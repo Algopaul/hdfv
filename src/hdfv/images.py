@@ -72,12 +72,13 @@ def simshow(
     vmin: Optional[float] = None,
     vmax: Optional[float] = None,
     colorscheme: str = 'viridis',
+    rgb: bool = False,
 ):
   cmap = colormaps[colorscheme]
   dir = Path(outfile_base).parent
   dir.mkdir(exist_ok=True, parents=True)
   for i, x in enumerate(data):
-    rgb = _frame_rgb(
+    frame = _frame_rgb(
         x,
         channel,
         scale_factor,
@@ -85,8 +86,11 @@ def simshow(
         vmax,
         cmap,
         rgb,
+        grid=False,
+        nrows=1,
+        ncols=1,
     )
-    imageio.imwrite(str(outfile_base) + f'_{i:03d}.png', rgb)
+    imageio.imwrite(str(outfile_base) + f'_{i:03d}.png', frame)
 
 
 def grid_shape(B: int) -> tuple[int, int]:

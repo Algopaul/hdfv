@@ -47,10 +47,15 @@ def imshow(
     vmin: Optional[float] = None,
     vmax: Optional[float] = None,
     colorscheme: str = 'viridis',
+    slice: Optional[str] = None,
 ):
   with h5py.File(file, 'r') as f:
+    dset = cast(h5py.Dataset, f[field])
+    if slice:
+      sel = parse_slice(slice)
+      dset = dset[sel]
     simshow(
-        f[field],
+        dset,
         outfile_base,
         channel=channel,
         scale_factor=scale_factor,
