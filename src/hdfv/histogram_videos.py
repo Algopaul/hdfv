@@ -3,21 +3,54 @@ import numpy as np
 from matplotlib import colormaps
 
 
+def histogram_frames(
+    data,
+    *,
+    n_bins: int = 256,
+    xlim=(-1, 1),
+    ylim=(-1, 1),
+    vmax: float = 4.0,
+    colorscheme: str = "viridis",
+):
+  cmap = colormaps[colorscheme]
+  frames = []
+
+  for t in data:
+    hist = np.histogram2d(
+        t[:, 1],
+        t[:, 0],
+        bins=n_bins,
+        range=[xlim, ylim],
+    )[0]
+
+    img = np.clip(hist / vmax, 0, 1)
+    rgb = (255 * cmap(img)[..., :3]).astype(np.uint8)
+    frames.append(rgb)
+
+  return np.stack(frames)
+
+
 def histogram_video(data,
                     outfile,
                     *,
+                    n_bins: int = 256,
+                    xlim=(-1, 1),
+                    ylim=(-1, 1),
+                    vmax: float = 4.0,
                     fps: int = 30,
                     colorscheme: str = 'viridis'):
 
   vid_writer = imageio.get_writer(outfile, fps=fps, codec="libx264")
-  cmap = colormaps[colorscheme]
-  for t in data:
-    n_bins = 256
-    traj = np.histogram2d(t[:, 1], t[:, 0], n_bins, [[-5, 5], [-5, 5]])[0]
-    img = traj.reshape((n_bins, n_bins))
-    img = np.clip(img / 4, 0, 1)
-    rgb = (255 * cmap(img)[..., :3]).astype(np.uint8)
-    vid_writer.append_data(rgb)
+  frames = histogram_frames(
+      data,
+      n_bins=n_bins,
+      xlim=xlim,
+      ylim=ylim,
+      vmax=vmax,
+      colorscheme=colorscheme,
+  )
+  for f in frames:
+    vid_writer.append_data(f)
 
   vid_writer.close()
 
