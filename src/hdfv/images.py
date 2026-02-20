@@ -25,18 +25,21 @@ def tile_batch(batch: np.ndarray, nrows, ncols, pad=0.0):
   return out
 
 
-def _frame_rgb(
+def frame_rgb(
     x,
-    channel,
-    scale_factor,
-    vmin,
-    vmax,
-    cmap,
-    rgb,
-    grid,
-    nrows,
-    ncols,
+    *,
+    channel=0,
+    scale_factor=1.0,
+    vmin=None,
+    vmax=None,
+    cmap=None,
+    rgb=None,
+    grid=False,
+    nrows=-1,
+    ncols=-1,
 ):
+  if cmap is None:
+    cmap = colormaps['viridis']
   if channel is not None and rgb:
     raise ValueError("Use either --channel or --rgb, not both.")
 
@@ -78,7 +81,7 @@ def simshow(
   dir = Path(outfile_base).parent
   dir.mkdir(exist_ok=True, parents=True)
   for i, x in enumerate(data):
-    frame = _frame_rgb(
+    frame = frame_rgb(
         x,
         channel,
         scale_factor,
@@ -121,7 +124,7 @@ def svideo(
   cmap = colormaps[colorscheme]
   writer = imageio.get_writer(outfile, fps=fps)
   for x in data:
-    frame = _frame_rgb(
+    frame = frame_rgb(
         x,
         channel,
         scale_factor,
