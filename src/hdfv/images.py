@@ -1,10 +1,10 @@
-import math
 from pathlib import Path
 from typing import Optional
 
 import imageio.v2 as imageio
 import numpy as np
 from matplotlib import colormaps
+from tqdm import tqdm
 
 
 def tile_batch(batch: np.ndarray, nrows, ncols, pad=0.0):
@@ -28,7 +28,7 @@ def tile_batch(batch: np.ndarray, nrows, ncols, pad=0.0):
 def frame_rgb(
     x,
     *,
-    channel=0,
+    channel: Optional[int] = None,
     scale_factor=1.0,
     vmin=None,
     vmax=None,
@@ -83,12 +83,12 @@ def simshow(
   for i, x in enumerate(data):
     frame = frame_rgb(
         x,
-        channel,
-        scale_factor,
-        vmin,
-        vmax,
-        cmap,
-        rgb,
+        channel=channel,
+        scale_factor=scale_factor,
+        vmin=vmin,
+        vmax=vmax,
+        cmap=cmap,
+        rgb=rgb,
         grid=False,
         nrows=1,
         ncols=1,
@@ -126,15 +126,15 @@ def svideo(
   for x in data:
     frame = frame_rgb(
         x,
-        channel,
-        scale_factor,
-        vmin,
-        vmax,
-        cmap,
-        rgb,
-        grid,
-        nrows,
-        ncols,
+        channel=channel,
+        scale_factor=scale_factor,
+        vmin=vmin,
+        vmax=vmax,
+        cmap=cmap,
+        rgb=rgb,
+        grid=grid,
+        nrows=nrows,
+        ncols=ncols,
     )
     writer.append_data(frame)
   writer.close()
