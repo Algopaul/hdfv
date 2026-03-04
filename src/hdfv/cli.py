@@ -1,9 +1,11 @@
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional, cast
 
 import h5py
 import numpy as np
 import typer
+import zarr
 from hdfx.cli import parse_slice
 from rich.console import Console
 
@@ -64,6 +66,20 @@ def imshow(
         colorscheme=colorscheme)
 
 
+@contextmanager
+def open_dataset(filename: Path, field: str):
+  p = Path(filename)
+  suffix = p.suffix.lower()
+  if suffix == '.zarr':
+    store = zarr.open(p, mode='r')
+    yield store[field]
+  elif suffix in ('.h5', '.hdf5'):
+    with h5py.File(p, 'r') as f:
+      yield f[field]
+  else:
+    raise ValueError(f'Unsupported format "{suffix}". Expected .zarr, .h5, or .hdf5')
+
+
 @app.command()
 def video(
     file: Path,
@@ -82,14 +98,13 @@ def video(
     perm: Optional[str] = None,
     slice: Optional[str] = None,
 ):
-  with h5py.File(file, 'r') as f:
-    dset = cast(h5py.Dataset, f[field])
+  with open_dataset(file, field) as dset:
     if perm is not None:
       p = tuple(int(i) for i in perm.split(","))
       dset = Permuted(dset, p)
     if slice:
       sel = parse_slice(slice)
-      dset = dset[sel]
+      dset = dset[sel]  # pyright: ignore
 
     svideo(
         dset,
