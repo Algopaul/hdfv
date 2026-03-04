@@ -3,7 +3,7 @@ name = "hdfv"
 version = "0.1.0"
 description = "View for hdf5 files"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 
 dependencies = [
   "h5py",
@@ -13,7 +13,8 @@ dependencies = [
   "tqdm",
   "matplotlib",
   "imageio",
-  "hdfx @ git+ssh://git@github.com/Algopaul/hdfx.git"
+  "hdfx @ git+ssh://git@github.com/Algopaul/hdfx.git",
+  "zarr (>=3.1.5,<4.0.0)"
 ]
 
 [project.scripts]

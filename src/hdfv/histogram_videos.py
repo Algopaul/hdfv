@@ -1,6 +1,7 @@
 import imageio.v2 as imageio
 import numpy as np
 from matplotlib import colormaps
+from tqdm import tqdm
 
 
 def histogram_frames(
@@ -13,7 +14,6 @@ def histogram_frames(
     colorscheme: str = "viridis",
 ):
   cmap = colormaps[colorscheme]
-  frames = []
 
   for t in data:
     hist = np.histogram2d(
@@ -24,10 +24,7 @@ def histogram_frames(
     )[0]
 
     img = np.clip(hist / vmax, 0, 1)
-    rgb = (255 * cmap(img)[..., :3]).astype(np.uint8)
-    frames.append(rgb)
-
-  return np.stack(frames)
+    yield (255 * cmap(img)[..., :3]).astype(np.uint8)
 
 
 def histogram_video(data,
@@ -49,7 +46,7 @@ def histogram_video(data,
       vmax=vmax,
       colorscheme=colorscheme,
   )
-  for f in frames:
+  for f in tqdm(frames, total=data.shape[0], desc="Writing frames"):
     vid_writer.append_data(f)
 
   vid_writer.close()

@@ -116,14 +116,20 @@ def svideo(
     colorscheme: str = 'viridis',
     fps: int = 20,
 ):
-  if ncols is None:
-    nrows, ncols = grid_shape(data.shape[1])
-    print(data.shape[1])
+  if grid:
+    n_batch = data.shape[0]
+    n_time = data.shape[1]
+    if ncols is None:
+      nrows, ncols = grid_shape(n_batch)
+    else:
+      nrows = int(np.ceil(n_batch / ncols))
+    frames = (data[:, t] for t in range(n_time))
   else:
-    nrows = int(np.ceil(data.shape[0] / ncols))
+    nrows, ncols = 1, 1
+    frames = iter(data)
   cmap = colormaps[colorscheme]
   writer = imageio.get_writer(outfile, fps=fps)
-  for x in data:
+  for x in tqdm(frames, total=data.shape[1] if grid else data.shape[0], desc="Writing frames"):
     frame = frame_rgb(
         x,
         channel=channel,
