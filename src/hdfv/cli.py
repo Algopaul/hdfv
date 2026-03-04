@@ -1,15 +1,15 @@
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional, cast
+from typing import Optional
 
-import h5py
 import numpy as np
 import typer
 import zarr
 from hdfx.cli import parse_slice
 from rich.console import Console
 
-from hdfv.histogram_videos import histogram_video, mhistims
+from hdfv.histogram_videos import (angle_color_coded_video, histogram_video,
+                                   mhistims, trace_video)
 from hdfv.images import simshow, svideo
 
 app = typer.Typer(help="Unix-style tools for working with HDF5")
@@ -24,8 +24,8 @@ def histvid(file: Path,
             *,
             fps: int = 30,
             colorscheme: str = 'viridis'):
-  with h5py.File(file, 'r') as f:
-    histogram_video(f[field], outfile, fps=fps, colorscheme=colorscheme)
+  with open_dataset(file, field) as dset:
+    histogram_video(dset, outfile, fps=fps, colorscheme=colorscheme)
 
 
 @app.command()
@@ -34,8 +34,8 @@ def histims(file: Path,
             outfile_base,
             *,
             colorscheme: str = 'viridis'):
-  with h5py.File(file, 'r') as f:
-    mhistims(f[field], outfile_base, colorscheme=colorscheme)
+  with open_dataset(file, field) as dset:
+    mhistims(dset, outfile_base, colorscheme=colorscheme)
 
 
 @app.command()
@@ -51,8 +51,7 @@ def imshow(
     colorscheme: str = 'viridis',
     slice: Optional[str] = None,
 ):
-  with h5py.File(file, 'r') as f:
-    dset = cast(h5py.Dataset, f[field])
+  with open_dataset(file, field) as dset:
     if slice:
       sel = parse_slice(slice)
       dset = dset[sel]
@@ -64,6 +63,11 @@ def imshow(
         vmin=vmin,
         vmax=vmax,
         colorscheme=colorscheme)
+
+
+def _parse_lim(s: str) -> tuple[float, float]:
+  a, b = s.split(",")
+  return float(a), float(b)
 
 
 @contextmanager
@@ -140,6 +144,59 @@ class Permuted:
     # map back to original axes
     src = tuple(idx[self.inv[i]] for i in range(self.ndim))
     return self.dset[src]
+
+
+@app.command()
+def tracevid(
+    file: Path,
+    field: str,
+    outfile: Path,
+    *,
+    resolution: int = 512,
+    xlim: str = "-1,1",
+    ylim: str = "-1,1",
+    trail_decay: float = 0.92,
+    dot_intensity: float = 1.0,
+    fps: int = 30,
+):
+  """Particle trace video with fading trails. data: (n_time, n_particles, 2)"""
+  with open_dataset(file, field) as dset:
+    trace_video(
+        dset,
+        outfile,
+        resolution=resolution,
+        xlim=_parse_lim(xlim),
+        ylim=_parse_lim(ylim),
+        trail_decay=trail_decay,
+        dot_intensity=dot_intensity,
+        fps=fps,
+    )
+
+
+@app.command()
+def anglevid(
+    file: Path,
+    field: str,
+    source_field: str,
+    outfile: Path,
+    *,
+    resolution: int = 512,
+    xlim: str = "-1,1",
+    ylim: str = "-1,1",
+    fps: int = 30,
+):
+  """Particle video colored by angle of a reference vector field. data: (n_time, n_particles, 2)"""
+  with open_dataset(file, field) as dset:
+    with open_dataset(file, source_field) as src:
+      angle_color_coded_video(
+          dset,
+          src,
+          outfile,
+          resolution=resolution,
+          xlim=_parse_lim(xlim),
+          ylim=_parse_lim(ylim),
+          fps=fps,
+      )
 
 
 def main():

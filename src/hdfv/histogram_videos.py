@@ -1,7 +1,16 @@
 import imageio.v2 as imageio
+import matplotlib
 import numpy as np
 from matplotlib import colormaps
 from tqdm import tqdm
+
+
+def _to_pixel(x, y, xlim, ylim, resolution):
+  xmin, xmax = xlim
+  ymin, ymax = ylim
+  px = ((x - xmin) / (xmax - xmin) * (resolution - 1)).astype(int)
+  py = ((y - ymin) / (ymax - ymin) * (resolution - 1)).astype(int)
+  return px, py
 
 
 def histogram_frames(
@@ -61,3 +70,112 @@ def mhistims(data, outfile_base, *, colorscheme: str = 'viridis'):
     img = np.clip(img / 3, 0, 1)
     rgb = (255 * cmap(img)[..., :3]).astype(np.uint8)
     imageio.imwrite(str(outfile_base) + f'_{i:03d}.png', rgb)
+
+
+def trace_frames(
+    data,
+    *,
+    resolution: int = 512,
+    xlim=(-1, 1),
+    ylim=(-1, 1),
+    trail_decay: float = 0.92,
+    dot_intensity: float = 1.0,
+):
+  """
+  data: (n_time, n_particles, 2)
+  Yields one RGB frame per timestep with a fading trail effect.
+  """
+  frame = np.zeros((resolution, resolution, 3), dtype=np.float32)
+
+  for t in range(data.shape[0]):
+    frame *= trail_decay
+
+    xy = np.array(data[t])
+    px, py = _to_pixel(xy[:, 0], xy[:, 1], xlim, ylim, resolution)
+
+    mask = (px >= 0) & (px < resolution) & (py >= 0) & (py < resolution)
+    px, py = px[mask], py[mask]
+
+    frame[py, px, 0] += 0.1 * dot_intensity
+    frame[py, px, 1] += 0.8 * dot_intensity
+    frame[py, px, 2] += 1.0 * dot_intensity
+
+    yield (255 * np.clip(frame, 0, 1)).astype(np.uint8)
+
+
+def trace_video(
+    data,
+    outfile,
+    *,
+    resolution: int = 512,
+    xlim=(-1, 1),
+    ylim=(-1, 1),
+    trail_decay: float = 0.92,
+    dot_intensity: float = 1.0,
+    fps: int = 30,
+):
+  writer = imageio.get_writer(outfile, fps=fps, codec="libx264")
+  frames = trace_frames(
+      data,
+      resolution=resolution,
+      xlim=xlim,
+      ylim=ylim,
+      trail_decay=trail_decay,
+      dot_intensity=dot_intensity,
+  )
+  for f in tqdm(frames, total=data.shape[0], desc="Writing frames"):
+    writer.append_data(f)
+  writer.close()
+
+
+def angle_color_coded_frames(
+    data,
+    source_data,
+    *,
+    resolution: int = 512,
+    xlim=(-1, 1),
+    ylim=(-1, 1),
+):
+  """
+  data:        (n_time, n_particles, 2)  — positions over time
+  source_data: (n_particles, 2)          — reference vectors for color (e.g. initial velocity)
+  Yields one RGB frame per timestep, particles colored by angle of source_data.
+  """
+  cmap = matplotlib.colormaps['hsv']
+  angles = np.arctan2(np.array(source_data[:, 1]), np.array(source_data[:, 0]))
+  colors = cmap((np.pi + angles) / (2 * np.pi))[:, :3]
+
+  for t in range(data.shape[0]):
+    frame = np.zeros((resolution, resolution, 3), dtype=np.float32)
+
+    xy = np.array(data[t])
+    px, py = _to_pixel(xy[:, 0], xy[:, 1], xlim, ylim, resolution)
+
+    mask = (px >= 0) & (px < resolution) & (py >= 0) & (py < resolution)
+    px, py = px[mask], py[mask]
+    frame[py, px] = colors[mask]
+
+    yield (255 * np.clip(frame, 0, 1)).astype(np.uint8)
+
+
+def angle_color_coded_video(
+    data,
+    source_data,
+    outfile,
+    *,
+    resolution: int = 512,
+    xlim=(-1, 1),
+    ylim=(-1, 1),
+    fps: int = 30,
+):
+  writer = imageio.get_writer(outfile, fps=fps, codec="libx264")
+  frames = angle_color_coded_frames(
+      data,
+      source_data,
+      resolution=resolution,
+      xlim=xlim,
+      ylim=ylim,
+  )
+  for f in tqdm(frames, total=data.shape[0], desc="Writing frames"):
+    writer.append_data(f)
+  writer.close()
