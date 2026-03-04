@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Optional
 
+import h5py
 import numpy as np
 import typer
 import zarr
@@ -81,7 +82,8 @@ def open_dataset(filename: Path, field: str):
     with h5py.File(p, 'r') as f:
       yield f[field]
   else:
-    raise ValueError(f'Unsupported format "{suffix}". Expected .zarr, .h5, or .hdf5')
+    raise ValueError(
+        f'Unsupported format "{suffix}". Expected .zarr, .h5, or .hdf5')
 
 
 @app.command()

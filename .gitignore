@@ -29,3 +29,5 @@ htmlcov/
 *.hdf5
 *.hdf
 *.npz
+
+data
