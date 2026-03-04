@@ -13,7 +13,7 @@ from hdfv.histogram_videos import (angle_color_coded_video, histogram_video,
                                    mhistims, trace_video)
 from hdfv.images import simshow, svideo
 
-app = typer.Typer(help="Unix-style tools for working with HDF5")
+app = typer.Typer(help="Unix-style tools for working with HDF5 / Zarr")
 console = Console()
 err_console = Console(stderr=True)
 
@@ -159,6 +159,7 @@ def tracevid(
     ylim: str = "-1,1",
     trail_decay: float = 0.92,
     dot_intensity: float = 1.0,
+    dot_radius: int = 0,
     fps: int = 30,
 ):
   """Particle trace video with fading trails. data: (n_time, n_particles, 2)"""
@@ -171,6 +172,7 @@ def tracevid(
         ylim=_parse_lim(ylim),
         trail_decay=trail_decay,
         dot_intensity=dot_intensity,
+        dot_radius=dot_radius,
         fps=fps,
     )
 
@@ -185,6 +187,7 @@ def anglevid(
     resolution: int = 512,
     xlim: str = "-1,1",
     ylim: str = "-1,1",
+    dot_radius: int = 0,
     fps: int = 30,
 ):
   """Particle video colored by angle of a reference vector field. data: (n_time, n_particles, 2)"""
@@ -197,6 +200,7 @@ def anglevid(
           resolution=resolution,
           xlim=_parse_lim(xlim),
           ylim=_parse_lim(ylim),
+          dot_radius=dot_radius,
           fps=fps,
       )
 
