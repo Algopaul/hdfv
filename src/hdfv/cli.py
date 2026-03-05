@@ -29,6 +29,7 @@ def histvid(file: Path,
             ylim: str = "-1,1",
             vmax: float = 4.0,
             colorscheme: str = 'viridis'):
+  """Particle density histogram video. FIELD shape: (n_frames, n_particles, 2)."""
   with open_dataset(file, field) as dset:
     histogram_video(
         dset,
@@ -51,6 +52,7 @@ def histims(file: Path,
             ylim: str = "-1,1",
             vmax: float = 3.0,
             colorscheme: str = 'viridis'):
+  """Particle density histogram images. FIELD shape: (n_frames, n_particles, 2). Writes OUTFILE_BASE_NNN.png."""
   with open_dataset(file, field) as dset:
     mhistims(
         dset,
@@ -75,6 +77,7 @@ def imshow(
     colorscheme: str = 'viridis',
     slice: Optional[str] = None,
 ):
+  """Save field frames as images. FIELD shape: (n_frames, H, W) or (n_frames, H, W, C). Writes OUTFILE_BASE_NNN.png."""
   with open_dataset(file, field) as dset:
     if slice:
       sel = parse_slice(slice)
@@ -127,6 +130,7 @@ def video(
     perm: Optional[str] = None,
     slice: Optional[str] = None,
 ):
+  """Render field data as a video. FIELD shape: (n_frames, H, W) or (n_frames, H, W, C). Use --grid for batched data (B, n_frames, H, W)."""
   with open_dataset(file, field) as dset:
     if perm is not None:
       p = tuple(int(i) for i in perm.split(","))
