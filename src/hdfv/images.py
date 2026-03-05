@@ -61,8 +61,9 @@ def frame_rgb(
     elif x.ndim == 2:
       rgb = (255 * cmap(x)[..., :3]).astype(np.uint8)
     else:
-      assert rgb
-      rgb = x
+      raise ValueError(
+          "3D data requires either --channel to select a channel or --rgb for direct RGB output."
+      )
     return rgb
 
 
@@ -114,7 +115,7 @@ def svideo(
     vmin: Optional[float] = None,
     vmax: Optional[float] = None,
     colorscheme: str = 'viridis',
-    fps: int = 20,
+    fps: int = 30,
 ):
   if grid:
     n_batch = data.shape[0]

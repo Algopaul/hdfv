@@ -61,13 +61,18 @@ def histogram_video(data,
   vid_writer.close()
 
 
-def mhistims(data, outfile_base, *, colorscheme: str = 'viridis'):
+def mhistims(data,
+             outfile_base,
+             *,
+             n_bins: int = 256,
+             xlim=(-1, 1),
+             ylim=(-1, 1),
+             vmax: float = 3.0,
+             colorscheme: str = 'viridis'):
   cmap = colormaps[colorscheme]
   for i, t in enumerate(data):
-    n_bins = 256
-    traj = np.histogram2d(t[:, 1], t[:, 0], n_bins, [[-1, 1], [-1, 1]])[0]
-    img = traj.reshape((n_bins, n_bins))
-    img = np.clip(img / 3, 0, 1)
+    traj = np.histogram2d(t[:, 1], t[:, 0], n_bins, [list(xlim), list(ylim)])[0]
+    img = np.clip(traj / vmax, 0, 1)
     rgb = (255 * cmap(img)[..., :3]).astype(np.uint8)
     imageio.imwrite(str(outfile_base) + f'_{i:03d}.png', rgb)
 
@@ -94,7 +99,8 @@ def trace_frames(
   Yields one RGB frame per timestep with a fading trail effect.
   """
   frame = np.zeros((resolution, resolution, 3), dtype=np.float32)
-  offsets = _dot_offsets(dot_radius)
+  offsets = np.array(_dot_offsets(dot_radius), dtype=int)  # (n_offsets, 2): (dy, dx)
+  color = np.array([0.1, 0.8, 1.0], dtype=np.float32) * dot_intensity
 
   for t in range(data.shape[0]):
     frame *= trail_decay
@@ -102,12 +108,11 @@ def trace_frames(
     xy = np.array(data[t])
     px, py = _to_pixel(xy[:, 0], xy[:, 1], xlim, ylim, resolution)
 
-    for dy, dx in offsets:
-      qx, qy = px + dx, py + dy
-      mask = (qx >= 0) & (qx < resolution) & (qy >= 0) & (qy < resolution)
-      frame[qy[mask], qx[mask], 0] += 0.1 * dot_intensity
-      frame[qy[mask], qx[mask], 1] += 0.8 * dot_intensity
-      frame[qy[mask], qx[mask], 2] += 1.0 * dot_intensity
+    qy = py[np.newaxis, :] + offsets[:, 0, np.newaxis]  # (n_offsets, n_particles)
+    qx = px[np.newaxis, :] + offsets[:, 1, np.newaxis]
+    qy, qx = qy.ravel(), qx.ravel()
+    mask = (qx >= 0) & (qx < resolution) & (qy >= 0) & (qy < resolution)
+    np.add.at(frame, (qy[mask], qx[mask]), color)
 
     yield (255 * np.clip(frame, 0, 1)).astype(np.uint8)
 
@@ -155,8 +160,9 @@ def angle_color_coded_frames(
   """
   cmap = matplotlib.colormaps['hsv']
   angles = np.arctan2(np.array(source_data[:, 1]), np.array(source_data[:, 0]))
-  colors = cmap((np.pi + angles) / (2 * np.pi))[:, :3]
-  offsets = _dot_offsets(dot_radius)
+  colors = cmap((np.pi + angles) / (2 * np.pi))[:, :3].astype(np.float32)  # (n_particles, 3)
+  offsets = np.array(_dot_offsets(dot_radius), dtype=int)  # (n_offsets, 2): (dy, dx)
+  n_offsets = len(offsets)
 
   for t in range(data.shape[0]):
     frame = np.zeros((resolution, resolution, 3), dtype=np.float32)
@@ -164,10 +170,12 @@ def angle_color_coded_frames(
     xy = np.array(data[t])
     px, py = _to_pixel(xy[:, 0], xy[:, 1], xlim, ylim, resolution)
 
-    for dy, dx in offsets:
-      qx, qy = px + dx, py + dy
-      mask = (qx >= 0) & (qx < resolution) & (qy >= 0) & (qy < resolution)
-      frame[qy[mask], qx[mask]] = colors[mask]
+    qy = py[np.newaxis, :] + offsets[:, 0, np.newaxis]  # (n_offsets, n_particles)
+    qx = px[np.newaxis, :] + offsets[:, 1, np.newaxis]
+    qy, qx = qy.ravel(), qx.ravel()
+    colors_flat = np.tile(colors, (n_offsets, 1))  # (n_offsets * n_particles, 3)
+    mask = (qx >= 0) & (qx < resolution) & (qy >= 0) & (qy < resolution)
+    np.add.at(frame, (qy[mask], qx[mask]), colors_flat[mask])
 
     yield (255 * np.clip(frame, 0, 1)).astype(np.uint8)
 

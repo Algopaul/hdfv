@@ -24,9 +24,21 @@ def histvid(file: Path,
             outfile,
             *,
             fps: int = 30,
+            n_bins: int = 256,
+            xlim: str = "-1,1",
+            ylim: str = "-1,1",
+            vmax: float = 4.0,
             colorscheme: str = 'viridis'):
   with open_dataset(file, field) as dset:
-    histogram_video(dset, outfile, fps=fps, colorscheme=colorscheme)
+    histogram_video(
+        dset,
+        outfile,
+        fps=fps,
+        n_bins=n_bins,
+        xlim=_parse_lim(xlim),
+        ylim=_parse_lim(ylim),
+        vmax=vmax,
+        colorscheme=colorscheme)
 
 
 @app.command()
@@ -34,9 +46,20 @@ def histims(file: Path,
             field: str,
             outfile_base,
             *,
+            n_bins: int = 256,
+            xlim: str = "-1,1",
+            ylim: str = "-1,1",
+            vmax: float = 3.0,
             colorscheme: str = 'viridis'):
   with open_dataset(file, field) as dset:
-    mhistims(dset, outfile_base, colorscheme=colorscheme)
+    mhistims(
+        dset,
+        outfile_base,
+        n_bins=n_bins,
+        xlim=_parse_lim(xlim),
+        ylim=_parse_lim(ylim),
+        vmax=vmax,
+        colorscheme=colorscheme)
 
 
 @app.command()
@@ -55,7 +78,7 @@ def imshow(
   with open_dataset(file, field) as dset:
     if slice:
       sel = parse_slice(slice)
-      dset = dset[sel]
+      dset = dset[sel]  # type: ignore[index]
     simshow(
         dset,
         outfile_base,
@@ -76,7 +99,7 @@ def open_dataset(filename: Path, field: str):
   p = Path(filename)
   suffix = p.suffix.lower()
   if suffix == '.zarr':
-    store = zarr.open(p, mode='r')
+    store = zarr.open_group(p, mode='r')
     yield store[field]
   elif suffix in ('.h5', '.hdf5'):
     with h5py.File(p, 'r') as f:
@@ -110,7 +133,7 @@ def video(
       dset = Permuted(dset, p)
     if slice:
       sel = parse_slice(slice)
-      dset = dset[sel]  # pyright: ignore
+      dset = dset[sel]  # type: ignore[index]
 
     svideo(
         dset,
