@@ -18,7 +18,7 @@ console = Console()
 err_console = Console(stderr=True)
 
 
-@app.command(rich_help_panel="Histograms")
+@app.command(rich_help_panel="Particles")
 def histvid(file: Path,
             field: str,
             outfile,
@@ -42,7 +42,7 @@ def histvid(file: Path,
         colorscheme=colorscheme)
 
 
-@app.command(rich_help_panel="Histograms")
+@app.command(rich_help_panel="Particles")
 def histims(file: Path,
             field: str,
             outfile_base,
