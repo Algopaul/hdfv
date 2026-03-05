@@ -18,7 +18,7 @@ console = Console()
 err_console = Console(stderr=True)
 
 
-@app.command()
+@app.command(rich_help_panel="Histograms")
 def histvid(file: Path,
             field: str,
             outfile,
@@ -42,7 +42,7 @@ def histvid(file: Path,
         colorscheme=colorscheme)
 
 
-@app.command()
+@app.command(rich_help_panel="Histograms")
 def histims(file: Path,
             field: str,
             outfile_base,
@@ -64,7 +64,7 @@ def histims(file: Path,
         colorscheme=colorscheme)
 
 
-@app.command()
+@app.command(rich_help_panel="Fields")
 def imshow(
     file: Path,
     field: str,
@@ -112,7 +112,7 @@ def open_dataset(filename: Path, field: str):
         f'Unsupported format "{suffix}". Expected .zarr, .h5, or .hdf5')
 
 
-@app.command()
+@app.command(rich_help_panel="Fields")
 def video(
     file: Path,
     field: str,
@@ -175,7 +175,7 @@ class Permuted:
     return self.dset[src]
 
 
-@app.command()
+@app.command(rich_help_panel="Particles")
 def tracevid(
     file: Path,
     field: str,
@@ -204,7 +204,7 @@ def tracevid(
     )
 
 
-@app.command()
+@app.command(rich_help_panel="Particles")
 def anglevid(
     file: Path,
     field: str,
