@@ -45,7 +45,3 @@ hdfv video file.h5 field1 field2 out_dir/
 
 ### Video annotations
 Overlay colorbar, axis labels, and frame number on the video output.
-
-### Extend zarr/HDF5 support to `imshow`, `histvid`, `histims`
-Currently only the `video` command supports zarr. The other three commands use h5py
-directly. Refactor them to use the `open_dataset` context manager.

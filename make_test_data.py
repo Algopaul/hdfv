@@ -8,13 +8,13 @@ RNG = np.random.default_rng(42)
 
 
 def jitter(start, n_time, noise=0.02):
-  """Random walk from starting positions."""
-  pos = start.copy()
-  traj = [pos.copy()]
-  for _ in range(n_time - 1):
-    pos = np.clip(pos + RNG.normal(0, noise, pos.shape), -1, 1)
-    traj.append(pos.copy())
-  return np.stack(traj)  # (n_time, n_particles, 2)
+    """Random walk from starting positions."""
+    pos = start.copy()
+    traj = [pos.copy()]
+    for _ in range(n_time - 1):
+        pos = np.clip(pos + RNG.normal(0, noise, pos.shape), -1, 1)
+        traj.append(pos.copy())
+    return np.stack(traj)  # (n_time, n_particles, 2)
 
 
 # --- scenario A: single cluster, many particles ---
@@ -24,13 +24,14 @@ traj_a = jitter(start_a, n_time)
 
 # --- scenario B: two clusters drifting apart ---
 n_particles_b = 300
-start_b = np.vstack([
-    RNG.uniform(-0.5, -0.3, (n_particles_b // 2, 2)),
-    RNG.uniform(0.3, 0.5, (n_particles_b // 2, 2)),
-])
+start_b = np.vstack(
+    [
+        RNG.uniform(-0.5, -0.3, (n_particles_b // 2, 2)),
+        RNG.uniform(0.3, 0.5, (n_particles_b // 2, 2)),
+    ]
+)
 # add a slow drift
-drift = np.linspace(0, 0.4, n_time)[:, None, None] * np.array([-1, 1])[None,
-                                                                       None, :]
+drift = np.linspace(0, 0.4, n_time)[:, None, None] * np.array([-1, 1])[None, None, :]
 traj_b = jitter(start_b, n_time, noise=0.01) + drift
 
 # --- scenario C: ring of particles ---
@@ -41,12 +42,12 @@ traj_c = jitter(start_c, n_time, noise=0.015)
 
 # write HDF5
 with h5py.File("test_particles.h5", "w") as f:
-  f.create_dataset("single_cluster", data=traj_a)  # (200, 500, 2)
-  f.create_dataset("two_clusters", data=traj_b)  # (200, 300, 2)
-  f.create_dataset("ring", data=traj_c)  # (200, 400, 2)
-  # initial positions as reference vectors for anglevid
-  f.create_dataset("ring_init", data=start_c)  # (400, 2)
-  f.create_dataset("cluster_init", data=start_a)  # (500, 2)
+    f.create_dataset("single_cluster", data=traj_a)  # (200, 500, 2)
+    f.create_dataset("two_clusters", data=traj_b)  # (200, 300, 2)
+    f.create_dataset("ring", data=traj_c)  # (200, 400, 2)
+    # initial positions as reference vectors for anglevid
+    f.create_dataset("ring_init", data=start_c)  # (400, 2)
+    f.create_dataset("cluster_init", data=start_a)  # (500, 2)
 
 print("wrote test_particles.h5")
 
@@ -62,8 +63,6 @@ print("wrote test_particles.zarr")
 print()
 print("Example commands:")
 print("  hdfv tracevid test_particles.h5 ring out_ring.mp4")
-print(
-    "  hdfv tracevid test_particles.h5 two_clusters out_drift.mp4 --trail-decay 0.85"
-)
+print("  hdfv tracevid test_particles.h5 two_clusters out_drift.mp4 --trail-decay 0.85")
 print("  hdfv anglevid test_particles.h5 ring ring_init out_ring_angle.mp4")
 print("  hdfv histvid  test_particles.h5 single_cluster out_hist.mp4")
