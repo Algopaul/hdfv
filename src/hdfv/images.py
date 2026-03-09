@@ -81,16 +81,12 @@ class Frame:
         *,
         colorbar: bool = False,
         frame_number: int | None = None,
-        bar_width: int = 16,
-        label_width: int = 52,
     ) -> np.ndarray:
         arr = self.data
         if colorbar and self.cmap is not None and self.vrange is not None:
             vmin, vmax = self.vrange
             h = arr.shape[0]
-            cb = _colorbar_strip(
-                self.cmap, vmin, vmax, h, bar_width=bar_width, label_width=label_width
-            )
+            cb = _colorbar_strip(self.cmap, vmin, vmax, h)
             sep = np.zeros((h, 2, 3), dtype=np.uint8)
             arr = np.concatenate([arr, sep, cb], axis=1)
         if frame_number is not None:
@@ -104,9 +100,13 @@ class Frame:
         return arr
 
     def save(self, path, *, colorbar: bool = False, frame_number: int | None = None):
-        imageio.imwrite(str(path), self.annotated(colorbar=colorbar, frame_number=frame_number))
+        imageio.imwrite(
+            str(path), self.annotated(colorbar=colorbar, frame_number=frame_number)
+        )
 
-    def append_to(self, writer, *, colorbar: bool = False, frame_number: int | None = None):
+    def append_to(
+        self, writer, *, colorbar: bool = False, frame_number: int | None = None
+    ):
         writer.append_data(self.annotated(colorbar=colorbar, frame_number=frame_number))
 
 
@@ -177,9 +177,6 @@ def simshow(
             vmax=vmax,
             cmap=cmap,
             rgb=rgb,
-            grid=False,
-            nrows=1,
-            ncols=1,
         )
         f.save(
             str(outfile_base) + f"_{i:03d}.png",

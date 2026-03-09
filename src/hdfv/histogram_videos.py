@@ -15,6 +15,13 @@ def _to_pixel(x, y, xlim, ylim, resolution):
     return px, py
 
 
+def _write_video(frames, outfile, fps, total):
+    writer = imageio.get_writer(outfile, fps=fps, codec="libx264")
+    for f in tqdm(frames, total=total, desc="Writing frames"):
+        f.append_to(writer)
+    writer.close()
+
+
 def histogram_frames(
     data,
     *,
@@ -49,18 +56,19 @@ def histogram_video(
     fps: int = 30,
     colorscheme: str = "viridis",
 ):
-    vid_writer = imageio.get_writer(outfile, fps=fps, codec="libx264")
-    frames = histogram_frames(
-        data,
-        n_bins=n_bins,
-        xlim=xlim,
-        ylim=ylim,
-        vmax=vmax,
-        colorscheme=colorscheme,
+    _write_video(
+        histogram_frames(
+            data,
+            n_bins=n_bins,
+            xlim=xlim,
+            ylim=ylim,
+            vmax=vmax,
+            colorscheme=colorscheme,
+        ),
+        outfile,
+        fps,
+        data.shape[0],
     )
-    for f in tqdm(frames, total=data.shape[0], desc="Writing frames"):
-        f.append_to(vid_writer)
-    vid_writer.close()
 
 
 def mhistims(
@@ -73,13 +81,17 @@ def mhistims(
     vmax: float = 3.0,
     colorscheme: str = "viridis",
 ):
-    cmap = colormaps[colorscheme]
-    for i, t in enumerate(data):
-        hist = np.histogram2d(t[:, 1], t[:, 0], n_bins, [list(xlim), list(ylim)])[0]
-        img = np.clip(hist / vmax, 0, 1)
-        Frame((255 * cmap(img)[..., :3]).astype(np.uint8), (0.0, vmax), cmap).save(
-            str(outfile_base) + f"_{i:03d}.png"
+    for i, f in enumerate(
+        histogram_frames(
+            data,
+            n_bins=n_bins,
+            xlim=xlim,
+            ylim=ylim,
+            vmax=vmax,
+            colorscheme=colorscheme,
         )
+    ):
+        f.save(str(outfile_base) + f"_{i:03d}.png")
 
 
 def _dot_offsets(dot_radius: int):
@@ -136,19 +148,20 @@ def trace_video(
     dot_radius: int = 0,
     fps: int = 30,
 ):
-    writer = imageio.get_writer(outfile, fps=fps, codec="libx264")
-    frames = trace_frames(
-        data,
-        resolution=resolution,
-        xlim=xlim,
-        ylim=ylim,
-        trail_decay=trail_decay,
-        dot_intensity=dot_intensity,
-        dot_radius=dot_radius,
+    _write_video(
+        trace_frames(
+            data,
+            resolution=resolution,
+            xlim=xlim,
+            ylim=ylim,
+            trail_decay=trail_decay,
+            dot_intensity=dot_intensity,
+            dot_radius=dot_radius,
+        ),
+        outfile,
+        fps,
+        data.shape[0],
     )
-    for f in tqdm(frames, total=data.shape[0], desc="Writing frames"):
-        f.append_to(writer)
-    writer.close()
 
 
 def angle_color_coded_frames(
@@ -172,9 +185,11 @@ def angle_color_coded_frames(
     )  # (n_particles, 3)
     offsets = np.array(_dot_offsets(dot_radius), dtype=int)  # (n_offsets, 2): (dy, dx)
     n_offsets = len(offsets)
+    colors_flat = np.tile(colors, (n_offsets, 1))  # (n_offsets * n_particles, 3)
+    frame = np.zeros((resolution, resolution, 3), dtype=np.float32)
 
     for t in range(data.shape[0]):
-        frame = np.zeros((resolution, resolution, 3), dtype=np.float32)
+        frame.fill(0)
 
         xy = np.array(data[t])
         px, py = _to_pixel(xy[:, 0], xy[:, 1], xlim, ylim, resolution)
@@ -182,7 +197,6 @@ def angle_color_coded_frames(
         qy = py[np.newaxis, :] + offsets[:, 0, np.newaxis]  # (n_offsets, n_particles)
         qx = px[np.newaxis, :] + offsets[:, 1, np.newaxis]
         qy, qx = qy.ravel(), qx.ravel()
-        colors_flat = np.tile(colors, (n_offsets, 1))  # (n_offsets * n_particles, 3)
         mask = (qx >= 0) & (qx < resolution) & (qy >= 0) & (qy < resolution)
         np.add.at(frame, (qy[mask], qx[mask]), colors_flat[mask])
 
@@ -200,15 +214,16 @@ def angle_color_coded_video(
     dot_radius: int = 0,
     fps: int = 30,
 ):
-    writer = imageio.get_writer(outfile, fps=fps, codec="libx264")
-    frames = angle_color_coded_frames(
-        data,
-        source_data,
-        resolution=resolution,
-        xlim=xlim,
-        ylim=ylim,
-        dot_radius=dot_radius,
+    _write_video(
+        angle_color_coded_frames(
+            data,
+            source_data,
+            resolution=resolution,
+            xlim=xlim,
+            ylim=ylim,
+            dot_radius=dot_radius,
+        ),
+        outfile,
+        fps,
+        data.shape[0],
     )
-    for f in tqdm(frames, total=data.shape[0], desc="Writing frames"):
-        f.append_to(writer)
-    writer.close()
