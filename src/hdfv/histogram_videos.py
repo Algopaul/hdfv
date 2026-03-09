@@ -4,6 +4,8 @@ import numpy as np
 from matplotlib import colormaps
 from tqdm import tqdm
 
+from hdfv.images import Frame
+
 
 def _to_pixel(x, y, xlim, ylim, resolution):
     xmin, xmax = xlim
@@ -33,7 +35,7 @@ def histogram_frames(
         )[0]
 
         img = np.clip(hist / vmax, 0, 1)
-        yield (255 * cmap(img)[..., :3]).astype(np.uint8)
+        yield Frame((255 * cmap(img)[..., :3]).astype(np.uint8), (0.0, vmax), cmap)
 
 
 def histogram_video(
@@ -47,7 +49,6 @@ def histogram_video(
     fps: int = 30,
     colorscheme: str = "viridis",
 ):
-
     vid_writer = imageio.get_writer(outfile, fps=fps, codec="libx264")
     frames = histogram_frames(
         data,
@@ -58,8 +59,7 @@ def histogram_video(
         colorscheme=colorscheme,
     )
     for f in tqdm(frames, total=data.shape[0], desc="Writing frames"):
-        vid_writer.append_data(f)
-
+        f.append_to(vid_writer)
     vid_writer.close()
 
 
@@ -75,10 +75,11 @@ def mhistims(
 ):
     cmap = colormaps[colorscheme]
     for i, t in enumerate(data):
-        traj = np.histogram2d(t[:, 1], t[:, 0], n_bins, [list(xlim), list(ylim)])[0]
-        img = np.clip(traj / vmax, 0, 1)
-        rgb = (255 * cmap(img)[..., :3]).astype(np.uint8)
-        imageio.imwrite(str(outfile_base) + f"_{i:03d}.png", rgb)
+        hist = np.histogram2d(t[:, 1], t[:, 0], n_bins, [list(xlim), list(ylim)])[0]
+        img = np.clip(hist / vmax, 0, 1)
+        Frame((255 * cmap(img)[..., :3]).astype(np.uint8), (0.0, vmax), cmap).save(
+            str(outfile_base) + f"_{i:03d}.png"
+        )
 
 
 def _dot_offsets(dot_radius: int):
@@ -102,7 +103,7 @@ def trace_frames(
 ):
     """
     data: (n_time, n_particles, 2)
-    Yields one RGB frame per timestep with a fading trail effect.
+    Yields one RGB Frame per timestep with a fading trail effect.
     """
     frame = np.zeros((resolution, resolution, 3), dtype=np.float32)
     offsets = np.array(_dot_offsets(dot_radius), dtype=int)  # (n_offsets, 2): (dy, dx)
@@ -120,7 +121,7 @@ def trace_frames(
         mask = (qx >= 0) & (qx < resolution) & (qy >= 0) & (qy < resolution)
         np.add.at(frame, (qy[mask], qx[mask]), color)
 
-        yield (255 * np.clip(frame, 0, 1)).astype(np.uint8)
+        yield Frame((255 * np.clip(frame, 0, 1)).astype(np.uint8), None)
 
 
 def trace_video(
@@ -146,7 +147,7 @@ def trace_video(
         dot_radius=dot_radius,
     )
     for f in tqdm(frames, total=data.shape[0], desc="Writing frames"):
-        writer.append_data(f)
+        f.append_to(writer)
     writer.close()
 
 
@@ -162,7 +163,7 @@ def angle_color_coded_frames(
     """
     data:        (n_time, n_particles, 2)  — positions over time
     source_data: (n_particles, 2)          — reference vectors for color (e.g. initial velocity)
-    Yields one RGB frame per timestep, particles colored by angle of source_data.
+    Yields one RGB Frame per timestep, particles colored by angle of source_data.
     """
     cmap = matplotlib.colormaps["hsv"]
     angles = np.arctan2(np.array(source_data[:, 1]), np.array(source_data[:, 0]))
@@ -185,7 +186,7 @@ def angle_color_coded_frames(
         mask = (qx >= 0) & (qx < resolution) & (qy >= 0) & (qy < resolution)
         np.add.at(frame, (qy[mask], qx[mask]), colors_flat[mask])
 
-        yield (255 * np.clip(frame, 0, 1)).astype(np.uint8)
+        yield Frame((255 * np.clip(frame, 0, 1)).astype(np.uint8), None)
 
 
 def angle_color_coded_video(
@@ -209,5 +210,5 @@ def angle_color_coded_video(
         dot_radius=dot_radius,
     )
     for f in tqdm(frames, total=data.shape[0], desc="Writing frames"):
-        writer.append_data(f)
+        f.append_to(writer)
     writer.close()

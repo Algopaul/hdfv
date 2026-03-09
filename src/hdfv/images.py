@@ -1,9 +1,11 @@
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
 import imageio.v2 as imageio
 import numpy as np
 from matplotlib import colormaps
+from matplotlib.colors import Colormap
 from PIL import Image, ImageDraw, ImageFont
 from tqdm import tqdm
 
@@ -24,95 +26,6 @@ def tile_batch(batch: np.ndarray, nrows, ncols, pad=0.0):
         out[r * X : (r + 1) * X, c * Y : (c + 1) * Y, ...] = batch[i]
 
     return out
-
-
-def frame_rgb(
-    x,
-    *,
-    channel: Optional[int] = None,
-    scale_factor=1.0,
-    vmin=None,
-    vmax=None,
-    cmap=None,
-    rgb=None,
-    grid=False,
-    nrows=-1,
-    ncols=-1,
-):
-    if cmap is None:
-        cmap = colormaps["viridis"]
-    if channel is not None and rgb:
-        raise ValueError("Use either --channel or --rgb, not both.")
-
-    if grid:
-        x = tile_batch(x, nrows, ncols)
-
-    if rgb:
-        return x, None, None
-    else:
-        x = scale_factor * np.array(x)
-        vvmin = np.min(x) if vmin is None else vmin
-        vvmax = np.max(x) if vmax is None else vmax
-        x = np.clip(x, vvmin, vvmax)
-        x -= vvmin
-        x /= vvmax - vvmin
-        if channel is not None and channel >= 0:
-            x = x[..., channel]
-            out = (255 * cmap(x)[..., :3]).astype(np.uint8)
-        elif x.ndim == 2:
-            out = (255 * cmap(x)[..., :3]).astype(np.uint8)
-        else:
-            raise ValueError(
-                "3D data requires either --channel to select a channel or --rgb for direct RGB output."
-            )
-        return out, vvmin, vvmax
-
-
-def simshow(
-    data,
-    outfile_base,
-    *,
-    channel: int = 0,
-    scale_factor: float = 1.0,
-    vmin: Optional[float] = None,
-    vmax: Optional[float] = None,
-    colorscheme: str = "viridis",
-    rgb: bool = False,
-    colorbar: bool = False,
-    frame_number: bool = False,
-):
-    cmap = colormaps[colorscheme]
-    dir = Path(outfile_base).parent
-    dir.mkdir(exist_ok=True, parents=True)
-    for i, x in enumerate(data):
-        frame, vmin_used, vmax_used = frame_rgb(
-            x,
-            channel=channel,
-            scale_factor=scale_factor,
-            vmin=vmin,
-            vmax=vmax,
-            cmap=cmap,
-            rgb=rgb,
-            grid=False,
-            nrows=1,
-            ncols=1,
-        )
-        frame = annotate_frame(
-            frame,
-            frame_idx=i,
-            cmap=cmap,
-            vmin=vmin_used,
-            vmax=vmax_used,
-            colorbar=colorbar,
-            frame_number=frame_number,
-        )
-        imageio.imwrite(str(outfile_base) + f"_{i:03d}.png", frame)
-
-
-def grid_shape(B: int) -> tuple[int, int]:
-    ncols = int(np.ceil(np.sqrt(B)))
-    nrows = int(np.ceil(B / ncols))
-    return nrows, ncols
 
 
 _DEFAULT_FONT = None
@@ -157,38 +70,128 @@ def _colorbar_strip(
     return np.array(img)
 
 
-def annotate_frame(
-    rgb: np.ndarray,
+@dataclass
+class Frame:
+    data: np.ndarray
+    vrange: tuple[float, float] | None
+    cmap: Optional[Colormap] = None
+
+    def annotated(
+        self,
+        *,
+        colorbar: bool = False,
+        frame_number: int | None = None,
+        bar_width: int = 16,
+        label_width: int = 52,
+    ) -> np.ndarray:
+        arr = self.data
+        if colorbar and self.cmap is not None and self.vrange is not None:
+            vmin, vmax = self.vrange
+            h = arr.shape[0]
+            cb = _colorbar_strip(
+                self.cmap, vmin, vmax, h, bar_width=bar_width, label_width=label_width
+            )
+            sep = np.zeros((h, 2, 3), dtype=np.uint8)
+            arr = np.concatenate([arr, sep, cb], axis=1)
+        if frame_number is not None:
+            img = Image.fromarray(arr)
+            draw = ImageDraw.Draw(img)
+            font = _font()
+            text = f"t={frame_number:04d}"
+            draw.text((5, 5), text, fill=(0, 0, 0), font=font)
+            draw.text((4, 4), text, fill=(255, 255, 255), font=font)
+            arr = np.array(img)
+        return arr
+
+    def save(self, path, *, colorbar: bool = False, frame_number: int | None = None):
+        imageio.imwrite(str(path), self.annotated(colorbar=colorbar, frame_number=frame_number))
+
+    def append_to(self, writer, *, colorbar: bool = False, frame_number: int | None = None):
+        writer.append_data(self.annotated(colorbar=colorbar, frame_number=frame_number))
+
+
+def frame_rgb(
+    x,
     *,
-    frame_idx: Optional[int] = None,
+    channel: Optional[int] = None,
+    scale_factor=1.0,
+    vmin=None,
+    vmax=None,
     cmap=None,
+    rgb=None,
+    grid=False,
+    nrows=-1,
+    ncols=-1,
+) -> Frame:
+    if cmap is None:
+        cmap = colormaps["viridis"]
+    if channel is not None and rgb:
+        raise ValueError("Use either --channel or --rgb, not both.")
+
+    if grid:
+        x = tile_batch(x, nrows, ncols)
+
+    if rgb:
+        return Frame(x, None)
+    else:
+        x = scale_factor * np.array(x)
+        vvmin = np.min(x) if vmin is None else vmin
+        vvmax = np.max(x) if vmax is None else vmax
+        x = np.clip(x, vvmin, vvmax)
+        x -= vvmin
+        x /= vvmax - vvmin
+        if channel is not None and channel >= 0:
+            x = x[..., channel]
+            out = (255 * cmap(x)[..., :3]).astype(np.uint8)
+        elif x.ndim == 2:
+            out = (255 * cmap(x)[..., :3]).astype(np.uint8)
+        else:
+            raise ValueError(
+                "3D data requires either --channel to select a channel or --rgb for direct RGB output."
+            )
+        return Frame(out, (vvmin, vvmax), cmap)
+
+
+def simshow(
+    data,
+    outfile_base,
+    *,
+    channel: int = 0,
+    scale_factor: float = 1.0,
     vmin: Optional[float] = None,
     vmax: Optional[float] = None,
+    colorscheme: str = "viridis",
+    rgb: bool = False,
     colorbar: bool = False,
     frame_number: bool = False,
-    bar_width: int = 16,
-    label_width: int = 52,
-) -> np.ndarray:
-    """Append colorbar and/or overlay frame counter onto an RGB frame."""
-    frame = rgb
-    if colorbar and cmap is not None and vmin is not None and vmax is not None:
-        h = frame.shape[0]
-        cb = _colorbar_strip(
-            cmap, vmin, vmax, h, bar_width=bar_width, label_width=label_width
+):
+    cmap = colormaps[colorscheme]
+    dir = Path(outfile_base).parent
+    dir.mkdir(exist_ok=True, parents=True)
+    for i, x in enumerate(data):
+        f = frame_rgb(
+            x,
+            channel=channel,
+            scale_factor=scale_factor,
+            vmin=vmin,
+            vmax=vmax,
+            cmap=cmap,
+            rgb=rgb,
+            grid=False,
+            nrows=1,
+            ncols=1,
         )
-        sep = np.zeros((h, 2, 3), dtype=np.uint8)
-        frame = np.concatenate([frame, sep, cb], axis=1)
+        f.save(
+            str(outfile_base) + f"_{i:03d}.png",
+            colorbar=colorbar,
+            frame_number=i if frame_number else None,
+        )
 
-    if frame_number and frame_idx is not None:
-        img = Image.fromarray(frame)
-        draw = ImageDraw.Draw(img)
-        font = _font()
-        text = f"t={frame_idx:04d}"
-        draw.text((5, 5), text, fill=(0, 0, 0), font=font)
-        draw.text((4, 4), text, fill=(255, 255, 255), font=font)
-        frame = np.array(img)
 
-    return frame
+def grid_shape(B: int) -> tuple[int, int]:
+    ncols = int(np.ceil(np.sqrt(B)))
+    nrows = int(np.ceil(B / ncols))
+    return nrows, ncols
 
 
 def svideo(
@@ -227,7 +230,7 @@ def svideo(
             desc="Writing frames",
         )
     ):
-        frame, vmin_used, vmax_used = frame_rgb(
+        f = frame_rgb(
             x,
             channel=channel,
             scale_factor=scale_factor,
@@ -239,14 +242,5 @@ def svideo(
             nrows=nrows,
             ncols=ncols,
         )
-        frame = annotate_frame(
-            frame,
-            frame_idx=i,
-            cmap=cmap,
-            vmin=vmin_used,
-            vmax=vmax_used,
-            colorbar=colorbar,
-            frame_number=frame_number,
-        )
-        writer.append_data(frame)
+        f.append_to(writer, colorbar=colorbar, frame_number=i if frame_number else None)
     writer.close()

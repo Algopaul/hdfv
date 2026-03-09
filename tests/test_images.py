@@ -10,21 +10,21 @@ from hdfv.images import frame_rgb, grid_shape, tile_batch
 
 def test_frame_rgb_2d():
     x = np.linspace(0, 1, 64).reshape(8, 8)
-    out = frame_rgb(x)[0]
+    out = frame_rgb(x).data
     assert out.shape == (8, 8, 3)
     assert out.dtype == np.uint8
 
 
 def test_frame_rgb_channel():
     x = np.random.rand(8, 8, 3).astype(np.float32)
-    out = frame_rgb(x, channel=1)[0]
+    out = frame_rgb(x, channel=1).data
     assert out.shape == (8, 8, 3)
     assert out.dtype == np.uint8
 
 
 def test_frame_rgb_vmin_vmax():
     x = np.ones((4, 4)) * 0.5
-    out = frame_rgb(x, vmin=0.0, vmax=1.0)[0]
+    out = frame_rgb(x, vmin=0.0, vmax=1.0).data
     # all pixels should be the same color
     assert np.all(out == out[0, 0])
 
@@ -37,7 +37,7 @@ def test_frame_rgb_3d_no_channel_raises():
 
 def test_frame_rgb_rgb_passthrough():
     x = (np.random.rand(8, 8, 3) * 255).astype(np.uint8)
-    out = frame_rgb(x, rgb=True)[0]
+    out = frame_rgb(x, rgb=True).data
     assert np.array_equal(out, x)
 
 

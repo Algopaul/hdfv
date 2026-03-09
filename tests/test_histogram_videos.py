@@ -63,8 +63,8 @@ def test_histogram_frames_shape_and_dtype():
     data = np.random.uniform(-1, 1, (5, 200, 2))
     frames = list(histogram_frames(data, n_bins=64))
     assert len(frames) == 5
-    assert frames[0].shape == (64, 64, 3)
-    assert frames[0].dtype == np.uint8
+    assert frames[0].data.shape == (64, 64, 3)
+    assert frames[0].data.dtype == np.uint8
 
 
 def test_histogram_frames_colorscheme():
@@ -72,7 +72,7 @@ def test_histogram_frames_colorscheme():
     f_viridis = list(histogram_frames(data, n_bins=32, colorscheme="viridis"))
     f_plasma = list(histogram_frames(data, n_bins=32, colorscheme="plasma"))
     # different colorschemes should produce different output
-    assert not np.array_equal(f_viridis[0], f_plasma[0])
+    assert not np.array_equal(f_viridis[0].data, f_plasma[0].data)
 
 
 # ---------------------------------------------------------------------------
@@ -84,15 +84,15 @@ def test_trace_frames_shape_and_dtype():
     data = np.random.uniform(-1, 1, (8, 50, 2))
     frames = list(trace_frames(data, resolution=64))
     assert len(frames) == 8
-    assert frames[0].shape == (64, 64, 3)
-    assert frames[0].dtype == np.uint8
+    assert frames[0].data.shape == (64, 64, 3)
+    assert frames[0].data.dtype == np.uint8
 
 
 def test_trace_frames_trail_accumulates():
     data = np.zeros((5, 10, 2))  # all particles at origin
     frames = list(trace_frames(data, resolution=64, trail_decay=1.0, dot_intensity=1.0))
     # brightness should be non-decreasing at origin pixel
-    brightness = [f[32, 32].sum() for f in frames]
+    brightness = [f.data[32, 32].sum() for f in frames]
     assert all(b2 >= b1 for b1, b2 in zip(brightness, brightness[1:]))
 
 
@@ -101,8 +101,8 @@ def test_trace_frames_dot_radius():
     frames_r0 = list(trace_frames(data, resolution=64, dot_radius=0))
     frames_r3 = list(trace_frames(data, resolution=64, dot_radius=3))
     # larger radius → more lit pixels
-    lit_r0 = np.count_nonzero(frames_r0[0].sum(axis=-1))
-    lit_r3 = np.count_nonzero(frames_r3[0].sum(axis=-1))
+    lit_r0 = np.count_nonzero(frames_r0[0].data.sum(axis=-1))
+    lit_r3 = np.count_nonzero(frames_r3[0].data.sum(axis=-1))
     assert lit_r3 > lit_r0
 
 
@@ -116,5 +116,5 @@ def test_angle_color_coded_frames_shape_and_dtype():
     source = np.random.uniform(-1, 1, (40, 2))
     frames = list(angle_color_coded_frames(data, source, resolution=64))
     assert len(frames) == 6
-    assert frames[0].shape == (64, 64, 3)
-    assert frames[0].dtype == np.uint8
+    assert frames[0].data.shape == (64, 64, 3)
+    assert frames[0].data.dtype == np.uint8
