@@ -136,6 +136,7 @@ def video(
     *,
     rgb: bool = False,
     grid: bool = False,
+    batch: bool = False,
     ncols: Optional[int] = None,
     channel: Optional[int] = None,
     scale_factor: float = 1.0,
@@ -148,7 +149,7 @@ def video(
     colorbar: bool = False,
     frame_number: bool = False,
 ):
-    """Render field data as a video. FIELD shape: (n_frames, H, W) or (n_frames, H, W, C). Use --grid for batched data (B, n_frames, H, W)."""
+    """Render field data as a video. FIELD shape: (n_frames, H, W) or (n_frames, H, W, C). Use --grid for batched data (B, n_frames, H, W) as a tiled grid, or --batch to write one MP4 per batch item."""
     with open_dataset(file, field) as dset:
         if perm is not None:
             p = tuple(int(i) for i in perm.split(","))
@@ -162,6 +163,7 @@ def video(
             outfile_base,
             rgb=rgb,
             grid=grid,
+            batch=batch,
             ncols=ncols,
             channel=channel,
             scale_factor=scale_factor,

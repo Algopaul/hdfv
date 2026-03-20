@@ -191,42 +191,9 @@ def grid_shape(B: int) -> tuple[int, int]:
     return nrows, ncols
 
 
-def svideo(
-    data,
-    outfile,
-    *,
-    rgb: bool = False,
-    grid: bool = False,
-    ncols: Optional[int] = None,
-    channel: Optional[int] = None,
-    scale_factor: float = 1.0,
-    vmin: Optional[float] = None,
-    vmax: Optional[float] = None,
-    colorscheme: str = "viridis",
-    fps: int = 30,
-    colorbar: bool = False,
-    frame_number: bool = False,
-):
-    if grid:
-        n_batch = data.shape[0]
-        n_time = data.shape[1]
-        if ncols is None:
-            nrows, ncols = grid_shape(n_batch)
-        else:
-            nrows = int(np.ceil(n_batch / ncols))
-        frames = (data[:, t] for t in range(n_time))
-    else:
-        nrows, ncols = 1, 1
-        frames = iter(data)
-    cmap = colormaps[colorscheme]
+def _write_video(frames, outfile, *, n_frames, cmap, channel, scale_factor, vmin, vmax, rgb, grid, nrows, ncols, fps, colorbar, frame_number):
     writer = imageio.get_writer(outfile, fps=fps)
-    for i, x in enumerate(
-        tqdm(
-            frames,
-            total=data.shape[1] if grid else data.shape[0],
-            desc="Writing frames",
-        )
-    ):
+    for i, x in enumerate(tqdm(frames, total=n_frames, desc=f"Writing {Path(outfile).name}")):
         f = frame_rgb(
             x,
             channel=channel,
@@ -241,3 +208,80 @@ def svideo(
         )
         f.append_to(writer, colorbar=colorbar, frame_number=i if frame_number else None)
     writer.close()
+
+
+def svideo(
+    data,
+    outfile,
+    *,
+    rgb: bool = False,
+    grid: bool = False,
+    batch: bool = False,
+    ncols: Optional[int] = None,
+    channel: Optional[int] = None,
+    scale_factor: float = 1.0,
+    vmin: Optional[float] = None,
+    vmax: Optional[float] = None,
+    colorscheme: str = "viridis",
+    fps: int = 30,
+    colorbar: bool = False,
+    frame_number: bool = False,
+):
+    if grid and batch:
+        raise ValueError("Use either --grid or --batch, not both.")
+    cmap = colormaps[colorscheme]
+    common = dict(
+        cmap=cmap,
+        channel=channel,
+        scale_factor=scale_factor,
+        vmin=vmin,
+        vmax=vmax,
+        rgb=rgb,
+        fps=fps,
+        colorbar=colorbar,
+        frame_number=frame_number,
+    )
+
+    if batch:
+        n_batch = data.shape[0]
+        n_time = data.shape[1]
+        outfile = Path(outfile)
+        stem = outfile.with_suffix("").name
+        suffix = outfile.suffix or ".mp4"
+        for b in range(n_batch):
+            out = outfile.parent / f"{stem}_{b:03d}{suffix}"
+            _write_video(
+                iter(data[b]),
+                str(out),
+                n_frames=n_time,
+                grid=False,
+                nrows=1,
+                ncols=1,
+                **common,
+            )
+    elif grid:
+        n_batch = data.shape[0]
+        n_time = data.shape[1]
+        if ncols is None:
+            nrows, ncols = grid_shape(n_batch)
+        else:
+            nrows = int(np.ceil(n_batch / ncols))
+        _write_video(
+            (data[:, t] for t in range(n_time)),
+            outfile,
+            n_frames=n_time,
+            grid=True,
+            nrows=nrows,
+            ncols=ncols,
+            **common,
+        )
+    else:
+        _write_video(
+            iter(data),
+            outfile,
+            n_frames=data.shape[0],
+            grid=False,
+            nrows=1,
+            ncols=1,
+            **common,
+        )
