@@ -165,6 +165,8 @@ def simshow(
     colorbar: bool = False,
     frame_number: bool = False,
 ):
+    if len(data.shape) == 2:
+        data = data[np.newaxis]
     cmap = colormaps[colorscheme]
     dir = Path(outfile_base).parent
     dir.mkdir(exist_ok=True, parents=True)

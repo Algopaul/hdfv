@@ -89,7 +89,7 @@ def imshow(
     colorbar: bool = False,
     frame_number: bool = False,
 ):
-    """Save field frames as images. FIELD shape: (n_frames, H, W) or (n_frames, H, W, C). Writes OUTFILE_BASE_NNN.png."""
+    """Save field frames as images. FIELD shape: (H, W), (n_frames, H, W) or (n_frames, H, W, C). Writes OUTFILE_BASE_NNN.png."""
     with open_dataset(file, field) as dset:
         if slice:
             sel = parse_slice(slice)
