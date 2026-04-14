@@ -165,15 +165,17 @@ def simshow(
     colorbar: bool = False,
     frame_number: bool = False,
 ):
-    if len(data.shape) == 2:
-        data = data[np.newaxis]
+    is_single_frame = len(data.shape) == 2
+    frames = [np.asarray(data)] if is_single_frame else data
+    # (H, W) data has no channel dim — suppress channel selection
+    channel_arg = -1 if is_single_frame else channel
     cmap = colormaps[colorscheme]
     dir = Path(outfile_base).parent
     dir.mkdir(exist_ok=True, parents=True)
-    for i, x in enumerate(data):
+    for i, x in enumerate(frames):
         f = frame_rgb(
             x,
-            channel=channel,
+            channel=channel_arg,
             scale_factor=scale_factor,
             vmin=vmin,
             vmax=vmax,
